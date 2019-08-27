@@ -19,12 +19,12 @@ import lombok.extern.slf4j.Slf4j;
 @DirtiesContext
 @Testcontainers
 @Slf4j
-class VernemqTest extends AbstractMqttTest {
+//@Disabled
+class EmqttdTest extends AbstractMqttTest {
 
   @Container
-  private static final GenericContainer<?> broker = new GenericContainer<>("erlio/docker-vernemq")
-      .withLogConsumer(outputFrame -> log.debug(outputFrame.getUtf8String()))
-      .withEnv("DOCKER_VERNEMQ_ALLOW_ANONYMOUS", "on")
+  private static final GenericContainer<?> broker = new GenericContainer<>("emqttd/emqttd")
+      .withLogConsumer(outputFrame -> log.info(outputFrame.getUtf8String()))
       .withExposedPorts(1883)
       .waitingFor(forHealthcheck());
 

@@ -1,6 +1,6 @@
 package com.foo.mqtt;
 
-import static org.testcontainers.containers.wait.strategy.Wait.forHealthcheck;
+import static org.testcontainers.containers.BindMode.READ_ONLY;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,14 +19,13 @@ import lombok.extern.slf4j.Slf4j;
 @DirtiesContext
 @Testcontainers
 @Slf4j
-class VernemqTest extends AbstractMqttTest {
+class EjabberdTest extends AbstractMqttTest {
 
   @Container
-  private static final GenericContainer<?> broker = new GenericContainer<>("erlio/docker-vernemq")
+  private static final GenericContainer<?> broker = new GenericContainer<>("ejabberd/ecs")
       .withLogConsumer(outputFrame -> log.debug(outputFrame.getUtf8String()))
-      .withEnv("DOCKER_VERNEMQ_ALLOW_ANONYMOUS", "on")
       .withExposedPorts(1883)
-      .waitingFor(forHealthcheck());
+      .withClasspathResourceMapping("/ejabberd/conf/ejabberd.yml", "/home/ejabberd/conf/ejabberd.yml", READ_ONLY);
 
   @BeforeAll
   public static void beforeAll() {
