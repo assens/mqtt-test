@@ -18,14 +18,15 @@ import lombok.extern.slf4j.Slf4j;
 @DirtiesContext
 @Testcontainers
 @Slf4j
-//@Disabled
+@Disabled
 class VernemqTest extends AbstractMqttTest {
 
   @Container
   private static final GenericContainer<?> broker = new GenericContainer<>("erlio/docker-vernemq")
       .withLogConsumer(outputFrame -> log.info(outputFrame.getUtf8String()))
       .withEnv("DOCKER_VERNEMQ_ALLOW_ANONYMOUS", "on")
-      .withExposedPorts(1883, 8080);
+      .withEnv("DOCKER_VERNEMQ_LOG__CONSOLE__LEVEL", "debug")
+      .withExposedPorts(1883);
 
   @BeforeAll
   public static void beforeAll() {
