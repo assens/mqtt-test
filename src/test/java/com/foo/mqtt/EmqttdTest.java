@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 @DirtiesContext
 @Testcontainers
 @Slf4j
-//@Disabled
 class EmqttdTest extends AbstractMqttTest {
 
   @Container
