@@ -1,6 +1,7 @@
 package com.foo.mqtt;
 
 import static java.util.Objects.nonNull;
+import static org.eclipse.paho.client.mqttv3.MqttConnectOptions.MQTT_VERSION_3_1_1;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -57,6 +58,7 @@ public class MqttClientService implements MqttCallback {
     options.setCleanSession(false);
     options.setMaxInflight(10);
     options.setServerURIs(new String[] {serverURI});
+    options.setMqttVersion(MQTT_VERSION_3_1_1);
 
     final ThreadFactory threadFactory = new CustomizableThreadFactory("mqtt-client-exec");
     executorService = new ScheduledThreadPoolExecutor(corePoolSize, threadFactory, new ThreadPoolExecutor.CallerRunsPolicy());
