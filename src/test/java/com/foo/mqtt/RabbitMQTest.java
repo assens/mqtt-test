@@ -27,7 +27,7 @@ class RabbitMQTest extends AbstractMqttTest {
               .from("rabbitmq:3.7-management")
               .run("rabbitmq-plugins enable --offline rabbitmq_mqtt")
               .build()))
-                  .withLogConsumer(outputFrame -> log.info(outputFrame.getUtf8String()))
+                  .withLogConsumer(outputFrame -> log.debug(outputFrame.getUtf8String()))
                   .withExposedPorts(1883);
 
   @BeforeAll
