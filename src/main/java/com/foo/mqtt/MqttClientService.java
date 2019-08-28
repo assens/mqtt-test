@@ -102,8 +102,8 @@ public class MqttClientService implements MqttCallback {
     }
   }
 
-  public void subscribe(final String topicFilter) throws MqttException {
-    mqttClient.subscribe(topicFilter);
+  public void subscribe(final String topicFilter, int qos) throws MqttException {
+    mqttClient.subscribe(topicFilter, qos);
 
   }
 

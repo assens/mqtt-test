@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
@@ -36,12 +37,17 @@ public abstract class AbstractMqttTest {
   protected MqttClientService mqttPublisher;
 
   protected MqttClientService mqttConsumerCount;
-  protected MqttClientService mqttConsumerRetained;
+  protected MqttClientService mqttConsumerBeforePublish;
+  protected MqttClientService mqttConsumerAfterPublish;
 
   protected final AtomicInteger publishCount = new AtomicInteger(0);
-  protected final AtomicInteger arrivedCount = new AtomicInteger();
+
+  protected final AtomicInteger arrivedCountBeforePublish = new AtomicInteger();
+  protected final AtomicInteger arrivedCountAferPublish = new AtomicInteger();
+
   protected final AtomicReference<MqttMessage> lastMessagePublished = new AtomicReference<>();
-  protected final AtomicReference<MqttMessage> lastMessageArrived = new AtomicReference<>();
+  protected final AtomicReference<MqttMessage> lastMessageArrivedOnConsumerBeforePublish = new AtomicReference<>();
+  protected final AtomicReference<MqttMessage> lastMessageArrivedOnConsumerAfterPublish = new AtomicReference<>();
 
   protected final String topic = "fact";
 
@@ -60,73 +66,79 @@ public abstract class AbstractMqttTest {
     mqttConsumerCount.init();
     mqttConsumerCount.setMessageProcessor(messageArrived -> publishCount.incrementAndGet());
 
-    arrivedCount.set(0);
-    mqttConsumerRetained = new MqttClientService("consumer-retained",
+    arrivedCountBeforePublish.set(0);
+    mqttConsumerBeforePublish = new MqttClientService("consumer-before",
         messageArrived -> {
           final String payload = new String(messageArrived.getPayload());
-          lastMessageArrived.set(messageArrived);
-          arrivedCount.incrementAndGet();
-          log.info("[MQTT][arrived][retained: {}][duplicate: {}][qos: {}] {}",
+          lastMessageArrivedOnConsumerBeforePublish.set(messageArrived);
+          arrivedCountBeforePublish.incrementAndGet();
+          log.debug("[MQTT][before ][retained: {}][duplicate: {}][qos: {}] {}",
               messageArrived.isRetained(), messageArrived.isDuplicate(), messageArrived.getQos(), payload);
         });
-    mqttConsumerRetained.init();
+    mqttConsumerBeforePublish.init();
+
+    arrivedCountAferPublish.set(0);
+    mqttConsumerAfterPublish = new MqttClientService("consumer-after",
+        messageArrived -> {
+          final String payload = new String(messageArrived.getPayload());
+          lastMessageArrivedOnConsumerAfterPublish.set(messageArrived);
+          arrivedCountAferPublish.incrementAndGet();
+          log.info("[MQTT][after  ][retained: {}][duplicate: {}][qos: {}] {}",
+              messageArrived.isRetained(), messageArrived.isDuplicate(), messageArrived.getQos(), payload);
+        });
+    mqttConsumerAfterPublish.init();
   }
 
   @AfterEach
   public void afterEach() throws MqttException {
     mqttConsumerCount.unsubsribe(topic);
-    mqttConsumerRetained.unsubsribe(topic);
     mqttConsumerCount.destroy();
-    mqttConsumerRetained.destroy();
+
+    mqttConsumerBeforePublish.unsubsribe(topic);
+    mqttConsumerBeforePublish.destroy();
+
+    mqttConsumerAfterPublish.unsubsribe(topic);
+    mqttConsumerAfterPublish.destroy();
+
   }
 
   @RepeatedTest(value = 10)
   @Order(1)
   @DisplayName("4.3.1 QoS 0: At most once delivery")
-  public void testAtMostOnce() throws MqttException {
-    // Act
-    publish(0);
-
-    // Assert
-    mqttConsumerRetained.subscribe(topic);
-    awaitUntilLastMessageArrived();
-
-    assertEquals(1, arrivedCount.get());
-    assertLastMessageArrivedEqualsLastMessagePublished();
+  public void testAtMostOnce(final RepetitionInfo repetitionInfo) throws MqttException {
+    actAndAssert(repetitionInfo, 0);
   }
 
   @RepeatedTest(value = 10)
   @Order(2)
   @DisplayName("4.3.2 QoS 1: At least once delivery")
-  public void testAtLeastOnce() throws MqttException {
-    // Act
-    publish(1);
-
-    // Assert
-    mqttConsumerRetained.subscribe(topic);
-    awaitUntilLastMessageArrived();
-
-    assertEquals(1, arrivedCount.get());
-    assertLastMessageArrivedEqualsLastMessagePublished();
+  public void testAtLeastOnce(final RepetitionInfo repetitionInfo) throws MqttException {
+    actAndAssert(repetitionInfo, 1);
   }
 
   @RepeatedTest(value = 10)
-  @Order(2)
+  @Order(3)
   @DisplayName("4.3.3 QoS 2: Exactly once delivery")
-  public void testExactlyOnce() throws MqttException {
-    // Act
-    publish(2);
+  public void testExactlyOnce(final RepetitionInfo repetitionInfo) throws MqttException {
+    actAndAssert(repetitionInfo, 2);
+  }
 
-    // Assert
-    mqttConsumerRetained.subscribe(topic);
+  private void actAndAssert(final RepetitionInfo repetitionInfo, int qos) throws MqttException {
+    // Act
+    mqttConsumerBeforePublish.subscribe(topic, qos);
+    publish(qos);
+    logAftePublish(repetitionInfo, qos);
+    mqttConsumerAfterPublish.subscribe(topic, qos);
     awaitUntilLastMessageArrived();
 
-    assertEquals(1, arrivedCount.get());
-    assertLastMessageArrivedEqualsLastMessagePublished();
+    // Assert
+    assertEquals(1, arrivedCountAferPublish.get());
+    assertLastMessageOnConsumerBeforePublishArrivedEqualsLastMessagePublished();
+    assertLastMessageOnConsumerAfterPublishArrivedEqualsLastMessagePublished();
   }
 
   protected void publish(final int qos) throws MqttException {
-    mqttConsumerCount.subscribe(topic);
+    mqttConsumerCount.subscribe(topic, qos);
     IntStream.range(0, numberOfMessages).forEach(i -> {
       final String fact = String.format("[%s] %s", i, chuckNorris.fact());
       final MqttMessage message = message(fact, qos, true);
@@ -134,7 +146,6 @@ public abstract class AbstractMqttTest {
       lastMessagePublished.set(message);
     });
     awaitUntilPiblishCount();
-
   }
 
   protected MqttMessage message(final String payload, final int qos, final boolean retained) {
@@ -151,21 +162,38 @@ public abstract class AbstractMqttTest {
         .pollDelay(FIVE_HUNDRED_MILLISECONDS)
         .atMost(FIVE_SECONDS)
         .until(() -> publishCount.get() >= numberOfMessages);
-    log.info("[MQTT][publish][retained: {}][duplicate: {}][qos: {}] {}",
-        lastMessagePublished.get().isRetained(), lastMessagePublished.get().isDuplicate(), lastMessagePublished.get().getQos(), lastMessagePublished.get());
   }
 
   private void awaitUntilLastMessageArrived() {
     await()
         .pollDelay(FIVE_HUNDRED_MILLISECONDS)
         .atMost(FIVE_SECONDS)
-        .until(() -> nonNull(lastMessageArrived.get()));
+        .until(() -> nonNull(lastMessageArrivedOnConsumerAfterPublish.get()));
   }
 
-  private void assertLastMessageArrivedEqualsLastMessagePublished() {
-    assertArrayEquals(lastMessagePublished.get().getPayload(), lastMessageArrived.get().getPayload(),
-        String.format("\nMessage arrived is different from the last published message!\nPublished: %s\nArrived  : %s\n",
-            new String(lastMessagePublished.get().getPayload()), new String(lastMessageArrived.get().getPayload())));
+  private void assertLastMessageOnConsumerBeforePublishArrivedEqualsLastMessagePublished() {
+    assertArrayEquals(lastMessagePublished.get().getPayload(), lastMessageArrivedOnConsumerBeforePublish.get().getPayload(),
+        String.format(
+            "\nMessage arrived on consumber subscribed before the publish is different from the last published message!\nPublished: %s\nArrived  : %s\n",
+            new String(lastMessagePublished.get().getPayload()), new String(lastMessageArrivedOnConsumerAfterPublish.get().getPayload())));
+  }
+
+  private void assertLastMessageOnConsumerAfterPublishArrivedEqualsLastMessagePublished() {
+    assertArrayEquals(lastMessagePublished.get().getPayload(), lastMessageArrivedOnConsumerAfterPublish.get().getPayload(),
+        String.format(
+            "\nMessage arrived on consumber subscribed after the publish  is different from the last published message!\nPublished: %s\nArrived  : %s\n",
+            new String(lastMessagePublished.get().getPayload()), new String(lastMessageArrivedOnConsumerAfterPublish.get().getPayload())));
+  }
+
+  private void logAftePublish(final RepetitionInfo repetitionInfo,  int qos) {
+    log.info("--- QoS: {} --- {}/{} ---", qos, repetitionInfo.getCurrentRepetition(), repetitionInfo.getTotalRepetitions());
+    log.info("[MQTT][publish][retained: {}][duplicate: {}][qos: {}] {}",
+        lastMessagePublished.get().isRetained(), lastMessagePublished.get().isDuplicate(), lastMessagePublished.get().getQos(), lastMessagePublished.get());
+    log.info("[MQTT][before ][retained: {}][duplicate: {}][qos: {}] {}",
+        lastMessageArrivedOnConsumerBeforePublish.get().isRetained(),
+        lastMessageArrivedOnConsumerBeforePublish.get().isDuplicate(),
+        lastMessageArrivedOnConsumerBeforePublish.get().getQos(),
+        new String(lastMessageArrivedOnConsumerBeforePublish.get().getPayload()));
   }
 
 }
