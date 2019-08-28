@@ -129,7 +129,7 @@ public abstract class AbstractMqttTest {
     publish(qos);
     logAftePublish(repetitionInfo, qos);
     mqttConsumerAfterPublish.subscribe(topic, qos);
-    awaitUntilLastMessageArrived();
+    awaitUntilLastMessageArrivedOnConsumerAfterPublish();
 
     // Assert
     assertEquals(1, arrivedCountAferPublish.get());
@@ -164,7 +164,7 @@ public abstract class AbstractMqttTest {
         .until(() -> publishCount.get() >= numberOfMessages);
   }
 
-  private void awaitUntilLastMessageArrived() {
+  private void awaitUntilLastMessageArrivedOnConsumerAfterPublish() {
     await()
         .pollDelay(FIVE_HUNDRED_MILLISECONDS)
         .atMost(FIVE_SECONDS)
@@ -174,14 +174,14 @@ public abstract class AbstractMqttTest {
   private void assertLastMessageOnConsumerBeforePublishArrivedEqualsLastMessagePublished() {
     assertArrayEquals(lastMessagePublished.get().getPayload(), lastMessageArrivedOnConsumerBeforePublish.get().getPayload(),
         String.format(
-            "\nMessage arrived on consumber subscribed before the publish is different from the last published message!\nPublished: %s\nArrived  : %s\n",
+            "\nMessage arrived on consumer subscribed before the publish is different from the last published message!\nPublished: %s\nArrived  : %s\n",
             new String(lastMessagePublished.get().getPayload()), new String(lastMessageArrivedOnConsumerAfterPublish.get().getPayload())));
   }
 
   private void assertLastMessageOnConsumerAfterPublishArrivedEqualsLastMessagePublished() {
     assertArrayEquals(lastMessagePublished.get().getPayload(), lastMessageArrivedOnConsumerAfterPublish.get().getPayload(),
         String.format(
-            "\nMessage arrived on consumber subscribed after the publish  is different from the last published message!\nPublished: %s\nArrived  : %s\n",
+            "\nMessage arrived on consumer subscribed after the publish  is different from the last published message!\nPublished: %s\nArrived  : %s\n",
             new String(lastMessagePublished.get().getPayload()), new String(lastMessageArrivedOnConsumerAfterPublish.get().getPayload())));
   }
 
