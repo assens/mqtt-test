@@ -16,6 +16,8 @@
 
   <properties>
     <java.version>11</java.version>
+    <!-- <artemis.version>2.11.0-SNAPSHOT</artemis.version> -->
+    <artemis.version>2.9.0</artemis.version>
   </properties>
 
   <dependencies>
@@ -116,6 +118,15 @@
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
           </systemPropertyVariables>
+          <properties>
+          <configurationParameters>
+            junit.jupiter.execution.parallel.enabled = true
+            junit.jupiter.execution.parallel.mode.default = same_thread
+            junit.jupiter.execution.parallel.mode.classes.default = concurrent
+            junit.jupiter.execution.parallel.config.strategy = fixed
+            junit.jupiter.execution.parallel.config.fixed.parallelism = 4
+          </configurationParameters>
+          </properties>
         </configuration>
       </plugin>
     </plugins>

@@ -1,7 +1,7 @@
 package com.foo.mqtt;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
 
 @SpringBootTest(properties = {
     "spring.artemis.embedded.enabled=true",
@@ -10,7 +10,10 @@ import org.springframework.test.annotation.DirtiesContext;
     "spring.main.banner-mode='off'",
     "logging.level.org.apache.activemq.audit=warn"
 })
-@DirtiesContext
 class ArtemisTest extends AbstractMqttTest {
 
+  @BeforeAll
+  public static void beforeAll() {
+    MqttPortUtil.setRandomMqttPort();
+  }
 }

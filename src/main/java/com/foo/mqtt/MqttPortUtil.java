@@ -4,13 +4,21 @@ import static org.springframework.util.SocketUtils.findAvailableTcpPort;
 
 public class MqttPortUtil {
 
-  public static String RANDOM_MQTT_PORT = String.valueOf(findAvailableTcpPort(2883, 3883));
+  private static final ThreadLocal<Integer> MQTT_PORT = new ThreadLocal<>();
 
   private MqttPortUtil() {
   }
 
-  public static String getMqttPort() {
-    return System.getProperty("MQTT_PORT", RANDOM_MQTT_PORT);
+  public static Integer getMqttPort() {
+    return MQTT_PORT.get();
+  }
+
+  public static void setMqttPort(Integer port) {
+    MQTT_PORT.set(port);
+  }
+
+  public static void setRandomMqttPort() {
+    MQTT_PORT.set(findAvailableTcpPort(2883, 3883));
   }
 
 }

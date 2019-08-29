@@ -25,7 +25,7 @@ import org.springframework.stereotype.Component;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-@Component
+//@Component
 @DependsOn("jmsTemplate")
 @Slf4j
 public class MqttClientService implements MqttCallback {

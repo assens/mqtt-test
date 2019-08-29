@@ -3,7 +3,7 @@ package com.foo.mqtt;
 import static java.util.Objects.nonNull;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.FIVE_HUNDRED_MILLISECONDS;
-import static org.awaitility.Durations.FIVE_SECONDS;
+import static org.awaitility.Durations.TEN_SECONDS;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -11,15 +11,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
+import org.apache.activemq.artemis.api.core.SimpleString;
+import org.apache.activemq.artemis.core.config.WildcardConfiguration;
+import org.apache.activemq.artemis.core.protocol.mqtt.MQTTUtil;
+import org.apache.activemq.artemis.core.server.MessageReference;
+import org.apache.activemq.artemis.core.server.Queue;
+import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
+import org.apache.activemq.artemis.utils.collections.LinkedListIterator;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +41,6 @@ public abstract class AbstractMqttTest {
 
   private final Logger log = LoggerFactory.getLogger(getClass());
 
-  @Autowired
   protected MqttClientService mqttPublisher;
 
   protected MqttClientService mqttConsumerCount;
@@ -52,16 +59,24 @@ public abstract class AbstractMqttTest {
   protected final String topic = "fact";
 
   private final ChuckNorris chuckNorris = (new Faker()).chuckNorris();
+  
   private final int numberOfMessages = 100;
+  private final int numberOfTests = 1;
 
+  @Autowired(required = false)
+  private EmbeddedJMS embeddedJMS;
+  
   @BeforeEach
   public void beforeEach() throws MqttException {
+    publishCount.set(0);
+    mqttPublisher = new MqttClientService("publisher", null);
+    mqttPublisher.init();
+
     final MqttMessage clearRetainedMessage = new MqttMessage(new byte[] {});
     clearRetainedMessage.setRetained(true);
     clearRetainedMessage.setQos(1);
     mqttPublisher.publish(topic, clearRetainedMessage);
 
-    publishCount.set(0);
     mqttConsumerCount = new MqttClientService("consumer-count", null);
     mqttConsumerCount.init();
     mqttConsumerCount.setMessageProcessor(messageArrived -> publishCount.incrementAndGet());
@@ -91,6 +106,8 @@ public abstract class AbstractMqttTest {
 
   @AfterEach
   public void afterEach() throws MqttException {
+    mqttPublisher.destroy();
+
     mqttConsumerCount.unsubsribe(topic);
     mqttConsumerCount.destroy();
 
@@ -102,21 +119,23 @@ public abstract class AbstractMqttTest {
 
   }
 
-  @RepeatedTest(value = 10)
+  @RepeatedTest(numberOfTests)
   @Order(1)
   @DisplayName("4.3.1 QoS 0: At most once delivery")
+  //@Disabled
   public void testAtMostOnce(final RepetitionInfo repetitionInfo) throws MqttException {
     actAndAssert(repetitionInfo, 0);
   }
 
-  @RepeatedTest(value = 10)
+  @RepeatedTest(numberOfTests)
   @Order(2)
   @DisplayName("4.3.2 QoS 1: At least once delivery")
+  //@Disabled
   public void testAtLeastOnce(final RepetitionInfo repetitionInfo) throws MqttException {
     actAndAssert(repetitionInfo, 1);
   }
 
-  @RepeatedTest(value = 10)
+  @RepeatedTest(value = 1)
   @Order(3)
   @DisplayName("4.3.3 QoS 2: Exactly once delivery")
   public void testExactlyOnce(final RepetitionInfo repetitionInfo) throws MqttException {
@@ -128,6 +147,7 @@ public abstract class AbstractMqttTest {
     mqttConsumerBeforePublish.subscribe(topic, qos);
     publish(qos);
     logAftePublish(repetitionInfo, qos);
+    logRetainedMessagesQueue();
     mqttConsumerAfterPublish.subscribe(topic, qos);
     awaitUntilLastMessageArrivedOnConsumerAfterPublish();
 
@@ -160,14 +180,14 @@ public abstract class AbstractMqttTest {
     await()
         .with()
         .pollDelay(FIVE_HUNDRED_MILLISECONDS)
-        .atMost(FIVE_SECONDS)
+        .atMost(TEN_SECONDS)
         .until(() -> publishCount.get() >= numberOfMessages);
   }
 
   private void awaitUntilLastMessageArrivedOnConsumerAfterPublish() {
     await()
         .pollDelay(FIVE_HUNDRED_MILLISECONDS)
-        .atMost(FIVE_SECONDS)
+        .atMost(TEN_SECONDS)
         .until(() -> nonNull(lastMessageArrivedOnConsumerAfterPublish.get()));
   }
 
@@ -185,7 +205,7 @@ public abstract class AbstractMqttTest {
             new String(lastMessagePublished.get().getPayload()), new String(lastMessageArrivedOnConsumerAfterPublish.get().getPayload())));
   }
 
-  private void logAftePublish(final RepetitionInfo repetitionInfo,  int qos) {
+  private void logAftePublish(final RepetitionInfo repetitionInfo, int qos) {
     log.info("--- QoS: {} --- {}/{} ---", qos, repetitionInfo.getCurrentRepetition(), repetitionInfo.getTotalRepetitions());
     log.info("[MQTT][publish][retained: {}][duplicate: {}][qos: {}] {}",
         lastMessagePublished.get().isRetained(), lastMessagePublished.get().isDuplicate(), lastMessagePublished.get().getQos(), lastMessagePublished.get());
@@ -196,4 +216,13 @@ public abstract class AbstractMqttTest {
         new String(lastMessageArrivedOnConsumerBeforePublish.get().getPayload()));
   }
 
+  private void logRetainedMessagesQueue() {
+    if (nonNull(embeddedJMS)) {
+      final WildcardConfiguration wildcardConfiguration = new WildcardConfiguration();
+      final SimpleString retainAddress = new SimpleString(MQTTUtil.convertMQTTAddressFilterToCoreRetain(topic, wildcardConfiguration));
+      final Queue queue = embeddedJMS.getActiveMQServer().locateQueue(retainAddress);
+      final LinkedListIterator<MessageReference> browserIterator = queue.browserIterator();
+      browserIterator.forEachRemaining(messageReference -> log.info("[MQTT][{}] {}", retainAddress, messageReference));
+    }
+  }
 }
