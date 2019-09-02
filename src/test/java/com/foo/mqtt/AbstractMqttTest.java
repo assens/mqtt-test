@@ -12,10 +12,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
 import org.apache.activemq.artemis.api.core.SimpleString;
+import org.apache.activemq.artemis.api.core.management.QueueControl;
 import org.apache.activemq.artemis.core.config.WildcardConfiguration;
 import org.apache.activemq.artemis.core.protocol.mqtt.MQTTUtil;
 import org.apache.activemq.artemis.core.server.MessageReference;
 import org.apache.activemq.artemis.core.server.Queue;
+import org.apache.activemq.artemis.core.server.management.ManagementService;
 import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
 import org.apache.activemq.artemis.utils.collections.LinkedListIterator;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -36,6 +38,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.github.javafaker.ChuckNorris;
 import com.github.javafaker.Faker;
 
+@SuppressWarnings("deprecation")
 @TestMethodOrder(OrderAnnotation.class)
 public abstract class AbstractMqttTest {
 
@@ -59,13 +62,13 @@ public abstract class AbstractMqttTest {
   protected final String topic = "fact";
 
   private final ChuckNorris chuckNorris = (new Faker()).chuckNorris();
-  
-  private final int numberOfMessages = 100;
-  private final int numberOfTests = 1;
+
+  private final int numberOfMessages = 1000;
+  private final int numberOfTests = 30;
 
   @Autowired(required = false)
   private EmbeddedJMS embeddedJMS;
-  
+
   @BeforeEach
   public void beforeEach() throws MqttException {
     publishCount.set(0);
@@ -122,7 +125,6 @@ public abstract class AbstractMqttTest {
   @RepeatedTest(numberOfTests)
   @Order(1)
   @DisplayName("4.3.1 QoS 0: At most once delivery")
-  //@Disabled
   public void testAtMostOnce(final RepetitionInfo repetitionInfo) throws MqttException {
     actAndAssert(repetitionInfo, 0);
   }
@@ -130,12 +132,11 @@ public abstract class AbstractMqttTest {
   @RepeatedTest(numberOfTests)
   @Order(2)
   @DisplayName("4.3.2 QoS 1: At least once delivery")
-  //@Disabled
   public void testAtLeastOnce(final RepetitionInfo repetitionInfo) throws MqttException {
     actAndAssert(repetitionInfo, 1);
   }
 
-  @RepeatedTest(value = 1)
+  @RepeatedTest(numberOfTests)
   @Order(3)
   @DisplayName("4.3.3 QoS 2: Exactly once delivery")
   public void testExactlyOnce(final RepetitionInfo repetitionInfo) throws MqttException {
