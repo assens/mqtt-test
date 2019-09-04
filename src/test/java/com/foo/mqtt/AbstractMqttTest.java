@@ -49,15 +49,18 @@ public abstract class AbstractMqttTest {
   protected MqttClientService mqttConsumerCount;
   protected MqttClientService mqttConsumerBeforePublish;
   protected MqttClientService mqttConsumerAfterPublish;
+  protected MqttClientService mqttConsumerAfterPublish2;
 
   protected final AtomicInteger publishCount = new AtomicInteger(0);
 
   protected final AtomicInteger arrivedCountBeforePublish = new AtomicInteger();
   protected final AtomicInteger arrivedCountAferPublish = new AtomicInteger();
+  protected final AtomicInteger arrivedCountAferPublish2 = new AtomicInteger();
 
   protected final AtomicReference<MqttMessage> lastMessagePublished = new AtomicReference<>();
   protected final AtomicReference<MqttMessage> lastMessageArrivedOnConsumerBeforePublish = new AtomicReference<>();
   protected final AtomicReference<MqttMessage> lastMessageArrivedOnConsumerAfterPublish = new AtomicReference<>();
+  protected final AtomicReference<MqttMessage> lastMessageArrivedOnConsumerAfterPublish2 = new AtomicReference<>();
 
   protected final String topic = "fact";
 
@@ -96,6 +99,7 @@ public abstract class AbstractMqttTest {
     mqttConsumerBeforePublish.init();
 
     arrivedCountAferPublish.set(0);
+    arrivedCountAferPublish2.set(0);
     mqttConsumerAfterPublish = new MqttClientService("consumer-after",
         messageArrived -> {
           final String payload = new String(messageArrived.getPayload());
@@ -104,7 +108,16 @@ public abstract class AbstractMqttTest {
           log.info("[MQTT][after  ][retained: {}][duplicate: {}][qos: {}] {}",
               messageArrived.isRetained(), messageArrived.isDuplicate(), messageArrived.getQos(), payload);
         });
+    mqttConsumerAfterPublish2 = new MqttClientService("consumer-after2",
+        messageArrived -> {
+          final String payload = new String(messageArrived.getPayload());
+          lastMessageArrivedOnConsumerAfterPublish2.set(messageArrived);
+          arrivedCountAferPublish2.incrementAndGet();
+          log.info("[MQTT][after2 ][retained: {}][duplicate: {}][qos: {}] {}",
+              messageArrived.isRetained(), messageArrived.isDuplicate(), messageArrived.getQos(), payload);
+        });
     mqttConsumerAfterPublish.init();
+    mqttConsumerAfterPublish2.init();
   }
 
   @AfterEach
@@ -120,6 +133,8 @@ public abstract class AbstractMqttTest {
     mqttConsumerAfterPublish.unsubsribe(topic);
     mqttConsumerAfterPublish.destroy();
 
+    mqttConsumerAfterPublish2.unsubsribe(topic);
+    mqttConsumerAfterPublish2.destroy();
   }
 
   @RepeatedTest(numberOfTests)
@@ -150,7 +165,9 @@ public abstract class AbstractMqttTest {
     logAftePublish(repetitionInfo, qos);
     logRetainedMessagesQueue();
     mqttConsumerAfterPublish.subscribe(topic, qos);
+    mqttConsumerAfterPublish2.subscribe(topic, qos);
     awaitUntilLastMessageArrivedOnConsumerAfterPublish();
+    awaitUntilLastMessageArrivedOnConsumerAfterPublish2();
 
     // Assert
     assertEquals(1, arrivedCountAferPublish.get());
@@ -190,6 +207,13 @@ public abstract class AbstractMqttTest {
         .pollDelay(FIVE_HUNDRED_MILLISECONDS)
         .atMost(TEN_SECONDS)
         .until(() -> nonNull(lastMessageArrivedOnConsumerAfterPublish.get()));
+  }
+
+  private void awaitUntilLastMessageArrivedOnConsumerAfterPublish2() {
+    await()
+        .pollDelay(FIVE_HUNDRED_MILLISECONDS)
+        .atMost(TEN_SECONDS)
+        .until(() -> nonNull(lastMessageArrivedOnConsumerAfterPublish2.get()));
   }
 
   private void assertLastMessageOnConsumerBeforePublishArrivedEqualsLastMessagePublished() {
