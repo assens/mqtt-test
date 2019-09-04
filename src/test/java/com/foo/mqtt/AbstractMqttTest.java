@@ -12,19 +12,16 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
 import org.apache.activemq.artemis.api.core.SimpleString;
-import org.apache.activemq.artemis.api.core.management.QueueControl;
 import org.apache.activemq.artemis.core.config.WildcardConfiguration;
 import org.apache.activemq.artemis.core.protocol.mqtt.MQTTUtil;
 import org.apache.activemq.artemis.core.server.MessageReference;
 import org.apache.activemq.artemis.core.server.Queue;
-import org.apache.activemq.artemis.core.server.management.ManagementService;
 import org.apache.activemq.artemis.jms.server.embedded.EmbeddedJMS;
 import org.apache.activemq.artemis.utils.collections.LinkedListIterator;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
@@ -173,6 +170,7 @@ public abstract class AbstractMqttTest {
     assertEquals(1, arrivedCountAferPublish.get());
     assertLastMessageOnConsumerBeforePublishArrivedEqualsLastMessagePublished();
     assertLastMessageOnConsumerAfterPublishArrivedEqualsLastMessagePublished();
+    
   }
 
   protected void publish(final int qos) throws MqttException {
@@ -226,7 +224,11 @@ public abstract class AbstractMqttTest {
   private void assertLastMessageOnConsumerAfterPublishArrivedEqualsLastMessagePublished() {
     assertArrayEquals(lastMessagePublished.get().getPayload(), lastMessageArrivedOnConsumerAfterPublish.get().getPayload(),
         String.format(
-            "\nMessage arrived on consumer subscribed after the publish  is different from the last published message!\nPublished: %s\nArrived  : %s\n",
+            "\nMessage arrived on consumer subscribed after the publish is different from the last published message!\nPublished: %s\nArrived  : %s\n",
+            new String(lastMessagePublished.get().getPayload()), new String(lastMessageArrivedOnConsumerAfterPublish.get().getPayload())));
+    assertArrayEquals(lastMessagePublished.get().getPayload(), lastMessageArrivedOnConsumerAfterPublish2.get().getPayload(),
+        String.format(
+            "\nMessage arrived on consumer subscribed after the publish (2) is different from the last published message!\nPublished: %s\nArrived  : %s\n",
             new String(lastMessagePublished.get().getPayload()), new String(lastMessageArrivedOnConsumerAfterPublish.get().getPayload())));
   }
 
