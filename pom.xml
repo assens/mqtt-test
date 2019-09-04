@@ -39,7 +39,7 @@
     <dependency>
       <groupId>org.apache.activemq</groupId>
       <artifactId>artemis-mqtt-protocol</artifactId>
-      <version>${artemis.version}</version>
+      <version>${artemis.version}-fix2</version>
     </dependency>
 
     <dependency>
