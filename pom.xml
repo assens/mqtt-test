@@ -16,7 +16,7 @@
 
   <properties>
     <java.version>11</java.version>
-    <artemis.version>2.9.0</artemis.version>
+    <artemis.version>2.10.0</artemis.version>
   </properties>
 
   <dependencies>
