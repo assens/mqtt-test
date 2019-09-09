@@ -16,7 +16,6 @@
 
   <properties>
     <java.version>11</java.version>
-    <artemis.version>2.11.0-SNAPSHOT</artemis.version>
     <artemis.version>2.9.0</artemis.version>
   </properties>
 
@@ -39,7 +38,7 @@
     <dependency>
       <groupId>org.apache.activemq</groupId>
       <artifactId>artemis-mqtt-protocol</artifactId>
-      <version>${artemis.version}-fix2</version>
+      <version>${artemis.version}</version>
     </dependency>
 
     <dependency>
@@ -155,14 +154,6 @@
 
   <repositories>
     <repository>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-      <id>ext-release-local</id>
-      <name>ext-release-local</name>
-      <url>https://artifactory.noser.com/artifactory/ext-release-local</url>
-    </repository>
-    <repository>
       <id>spring-milestones</id>
       <name>Spring Milestones</name>
       <url>https://repo.spring.io/milestone</url>
@@ -176,6 +167,14 @@
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
+    </repository>
+    <repository>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <id>ext-release-local</id>
+      <name>ext-release-local</name>
+      <url>https://artifactory.noser.com/artifactory/ext-release-local</url>
     </repository>
   </repositories>
   <pluginRepositories>
