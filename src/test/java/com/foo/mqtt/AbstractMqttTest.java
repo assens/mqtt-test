@@ -64,7 +64,7 @@ public abstract class AbstractMqttTest {
   private final ChuckNorris chuckNorris = (new Faker()).chuckNorris();
 
   private final int numberOfMessages = 1000;
-  private final int numberOfTests = 30;
+  private final int numberOfTests = 10;
 
   @Autowired(required = false)
   private EmbeddedJMS embeddedJMS;
