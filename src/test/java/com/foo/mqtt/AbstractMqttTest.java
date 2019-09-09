@@ -7,10 +7,12 @@ import static org.awaitility.Durations.TEN_SECONDS;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
+import org.apache.activemq.artemis.api.core.Message;
 import org.apache.activemq.artemis.api.core.SimpleString;
 import org.apache.activemq.artemis.core.config.WildcardConfiguration;
 import org.apache.activemq.artemis.core.protocol.mqtt.MQTTUtil;
@@ -249,7 +251,11 @@ public abstract class AbstractMqttTest {
       final SimpleString retainAddress = new SimpleString(MQTTUtil.convertMQTTAddressFilterToCoreRetain(topic, wildcardConfiguration));
       final Queue queue = embeddedJMS.getActiveMQServer().locateQueue(retainAddress);
       final LinkedListIterator<MessageReference> browserIterator = queue.browserIterator();
-      browserIterator.forEachRemaining(messageReference -> log.info("[MQTT][{}] {}", retainAddress, messageReference));
+      browserIterator.forEachRemaining(messageReference -> {
+        final Message message = messageReference.getMessage();
+        final String body = message.getBuffer().toString(StandardCharsets.UTF_8);
+        log.info("[MQTT][{}][{}][{}]", retainAddress, message, body);
+      });
     }
   }
 }
