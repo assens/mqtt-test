@@ -7,7 +7,7 @@ For further reference, please consider the following:
 * [MQTT Version 3.1.1](https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html)
 
 ### Test case
-The tests submit multiple retained messages with different QoS setting.
+The tests publish multiple retained messages with different QoS setting.
 
 After that an MQTT clients subscribe and receive the retained message.
 
